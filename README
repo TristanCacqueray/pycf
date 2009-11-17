@@ -1,0 +1,53 @@
+Python Context Free Art rendering tool
+======================================
+
+	pycf is a tool that render image with cfdg (http://www.contextfreeart.org)
+
+	it use musical wave to morph the shape.
+
+Requierement
+------------
+	* cfdg installed in PATH
+	* python 2.6 with Tk
+	* numpy
+	* scipy
+	* imaging (PIL)
+	* pyaudio
+	* mplayer (mencoder)
+
+	Optional:
+	* gnuplot-py
+
+How-to Use
+----------
+	python -OO main/context_free.py
+
+	There are several parameter:
+
+		--list:			list input/output audio devices
+		--input-device index	select input devices	
+		--output-device index	select output devices
+	
+		--fps num		25 by default, must be a multiple of 44100
+		--wave path		read and play the wave file
+		--render png_tmp_path	specify where the frames will be written (path must contain %06d)
+					--render mode require the use of a wav file
+
+	Preset for rendering:
+		--gains master low mid high	set default gain
+
+
+How it work
+-----------
+
+	context_free.py:				cf_inputs.audio_process():
+		| while True:				| while True:
+		|					| 	grab_wave (input_device or wav file)
+		|	Queue.pop()  <------------->	|	Queue.push(filter//fft)		: cf_dsp.py
+		|	controllers.get_state()  : cf_ihm.py
+		|	shape = generate_shape():	   cf_shapes.py
+		|	png_file = render(shape):	cf_render.py
+		|	viewer.show(png_file):		cf_ihm.py
+
+	if --render mode is activated, all shape are store, then at the end of stream (press ^C)
+	all png are rendered in high res then encoded with the audio file into a video
