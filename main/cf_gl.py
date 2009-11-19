@@ -41,8 +41,25 @@ class scene:
 		self.zlen = len(self.data)
 		self.xstep = 1 / (self.xlen/2.0)
 		self.zstep = 1 / -5.0
+	
+	def close(self):
+		pygame.quit()
 
-	def do(self, fft, output):
+	def do(self, fft, output = None):
+	        for event in pygame.event.get():
+			if event.type == QUIT:
+				return
+			if event.type == KEYUP and event.key == K_ESCAPE:
+				return
+		pressed = pygame.key.get_pressed()
+		if pressed[K_LEFT]:
+			self.rotation_y += 1
+		if pressed[K_RIGHT]:
+			self.rotation_y -= 1
+		if pressed[K_UP]:
+			self.rotation_x += 1
+		if pressed[K_DOWN]:
+			self.rotation_x -= 1
 		x = 0
 		fft /= len(fft)
 		dx1 = 0
@@ -99,58 +116,3 @@ class scene:
 		self.age = (self.age - 1) % self.zlen
 		if output:
 			pygame.image.save(self.surface, output)
-
-
-from context_free import check_argv,get_argv,print_devices_index
-from cf_inputs import *
-
-def main():
-	if check_argv("--list"):
-		return print_devices_index()
-	in_dev_idx = get_argv("--input-device", None)
-	out_dev_idx = get_argv("--output-device", None)
-	fps = get_argv("--fps", 25)
-	infile = get_argv("--wave", None, str)
-
-	if check_argv("--test-ihm"):
-		input = None
-	else:
-		input = audio_process(infile = infile, fps = fps, input_device_index = in_dev_idx, output_device_index = out_dev_idx)
-
-
-	s = Scene()
-	t0 = time.time()
-	cpt = 0
-	for x in xrange(len(s.data[0])):
-		s.data[0][x] = N.abs(N.sin(N.cos(x/10.0)))
-	while True:
-	        for event in pygame.event.get():
-			if event.type == QUIT:
-				return
-			if event.type == KEYUP and event.key == K_ESCAPE:
-				return
-		pressed = pygame.key.get_pressed()
-		if pressed[K_LEFT]:
-			s.rotation_y += 1
-		if pressed[K_RIGHT]:
-			s.rotation_y -= 1
-		if pressed[K_UP]:
-			s.rotation_x += 1
-		if pressed[K_DOWN]:
-			s.rotation_x -= 1
-
-		if input:
-			inputs = input.recv(False)
-			fft = inputs[4]
-		else:
-			fft = N.random.random(886) / 100
-		s.update(fft)
-		if time.time() - t0 > 1:
-			print "%d fps" % (cpt/1.0)
-			t0 = time.time()
-			cpt = 0
-		cpt += 1
-
-
-if __name__ == "__main__":
-	main()

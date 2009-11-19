@@ -19,20 +19,13 @@
 import time
 import sys
 
+import numpy as N
+
 from cf_render import cfdg
 from cf_ihm import pngwindow, controler
 from cf_shapes import shapes
 from cf_inputs import *
-
-class pyaudio_fake_process:
-	def __init__(self, *arg):
-		self.cpt = 0
-	def recv(self):
-		time.sleep(0.5)
-		if self.cpt & 1:
-			return (0.9, 0.9, 0.9, 0.9)
-		self.cpt += 1
-		return (0.0, 0.0, 0.0, 0.0)
+from cf_gl import scene
 
 def print_devices_index():
 	import pyaudio
@@ -46,14 +39,15 @@ def print_devices_index():
 
 def quick_render(shapes, output_fmt, fps, wave_path):
 	import subprocess
-	render = cfdg((800, 800))
-	t0, cpt = time.time(), 0
-	print "rendering, please wait"
-	for shape in shapes:
-		render.do(shape, output_fmt % cpt)
-		print "%06d\r" % cpt,
-		cpt += 1
-	print "%d image rendered in %d seconds" % (cpt, time.time() - t0)
+	if len(shapes) > 0:
+		render = cfdg((800, 800))
+		t0, cpt = time.time(), 0
+		print "rendering, please wait"
+		for shape in shapes:
+			render.do(shape, output_fmt % cpt)
+			print "%06d\r" % cpt,
+			cpt += 1
+		print "%d image rendered in %d seconds" % (cpt, time.time() - t0)
 	output_base = output_fmt[:output_fmt.index('%06d')]
 	av = ["mencoder", "mf://%s*.png" % output_base, "-mf", "fps=%d:type=png" % fps,
 		"-ovc", "lavc", "-lavcopts", "vcodec=mpeg4:vbitrate=4096",
@@ -118,11 +112,13 @@ def main():
 		else:
 			break
 
+	opengl = check_argv("--opengl")
+
 	if len(sys.argv) != 1:
 		raise RuntimeError("Unknown parameters: %s" % sys.argv[1:])
-
+	
 	if test_ihm:
-		input = pyaudio_fake_process()
+		input = fake_audio_process()
 	else:
 		input = audio_process(
 			infile = infile,
@@ -131,60 +127,75 @@ def main():
 			output_device_index = out_dev_idx
 		)
 
-	render = cfdg()
-
 	slow_render = False
-	viewer = pngwindow()
-	control = controler(viewer, shapes, start_shape, start_amps)
+	if opengl:
+		render = scene()
+		viewer = render
+	else:
+		render = cfdg()
+		viewer = pngwindow()
+		control = controler(viewer, shapes, start_shape, start_amps)
 	t0, cpt = time.time(), 0
 	try:
-		import numpy as N
+		gl_cpt = 0
 		while True:
 			# audio indicateurs (amps, frequencies)
 			inputs = input.recv(render_video)
 			fft = inputs[4]
 
-			# apply controllers gains
-			gains = control.get_gains()
-			amps = map(lambda x: x*gains[0], inputs[:4])
-			for idx in xrange(1, len(gains)):
-				amps[idx] = amps[idx] * gains[idx]
 
-			shape = control.get_shape()
-
-			# generate shape
-			s = shapes[shape].get(amps, fft)
-
-			if render_video:
-				# save shape for further rendering
-				to_render.append(s)
-
-			if control.dump_shape():
-				print s
-
-			# render image
-			render_time = time.time()
-			img = render.do(s)
-			render_time = time.time() - render_time
-			if render_time > 1/float(fps):
-				if not slow_render:
-					print "%f sec to render, %f sec below limit (1/%d)" % (
-						render_time, render_time - 1/float(fps), fps)
-					slow_render = True
+			if opengl:
+				if output_fmt:
+					of = output_fmt % gl_cpt
+				else:
+					of = None
+				render.do(fft, of)
 			else:
-				slow_render = False
+				# apply controllers gains
+				gains = control.get_gains()
+				amps = map(lambda x: x*gains[0], inputs[:4])
+				for idx in xrange(1, len(gains)):
+					amps[idx] = amps[idx] * gains[idx]
 
-			# display image
-			viewer.show(img)
+				shape = control.get_shape()
 
+				# generate shape
+				s = shapes[shape].get(amps, fft)
+
+				if render_video:
+					# save shape for further rendering
+					to_render.append(s)
+
+				if control.dump_shape():
+					print s
+
+				# render image
+				render_time = time.time()
+				img = render.do(s)
+				render_time = time.time() - render_time
+				if render_time > 1/float(fps):
+					if not slow_render:
+						print "%f sec to render, %f sec below limit (1/%d)" % (
+							render_time, render_time - 1/float(fps), fps)
+						slow_render = True
+				else:
+					slow_render = False
+
+				# display image
+				viewer.show(img)
+
+			gl_cpt += 1
 			cpt += 1
 			if time.time() - t0 > 10:
 				print "%d Frames generated in 10 seconds" % cpt
 				t0, cpt = time.time(), 0
 	except KeyboardInterrupt:
 		pass
+	except Exception, e:
+		print "oups:", e
 	if render_video:
-		viewer.root.destroy()
+		if not opengl:
+			viewer.close()
 		quick_render(to_render, output_fmt, fps, infile)
 
 	print "exiting"

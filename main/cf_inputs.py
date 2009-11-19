@@ -16,6 +16,7 @@ from multiprocessing import Process, Pipe, Queue
 from Queue import Full
 import pyaudio
 import wave
+import numpy as N
 from cf_dsp import dsp
 
 
@@ -55,6 +56,16 @@ class wave_file:
 		return data
 	def close(self):
 		self.wf.close()
+
+class fake_audio_process:
+	def __init__(self, *arg):
+		self.cpt = 0
+	def recv(self, mode = None):
+		#time.sleep(0.5)
+		if self.cpt & 1:
+			return (0.9, 0.9, 0.9, 0.9, N.random.random(886) /100.0)
+		self.cpt += 1
+		return (0.0, 0.0, 0.0, 0.0, N.random.random(886) /100.0)
 
 class audio_process:
 	def __init__(self, fps = 25, input_device_index = None, infile = None, output_device_index = None):

@@ -27,6 +27,8 @@ class pngwindow:
 			label.grid(columnspan=3, row=0, column=0)
 		self.img.paste(pil_img)
 		self.root.update()
+	def close(self):
+		self.root.destroy()
 
 # Controler
 class controler:
