@@ -131,7 +131,7 @@ def main():
 
 	slow_render = False
 	if opengl:
-		render = gl_ihm.scene()
+		render = gl_ihm.window
 		viewer = render
 		shapes = gl_shapes.shapes
 	else:
@@ -191,8 +191,8 @@ def main():
 				t0, cpt = t1, 0
 	except KeyboardInterrupt:
 		pass
-	except Exception, e:
-		print "oups:", e
+#	except Exception, e:
+#		print "oups:", e
 	if render_video:
 		if not opengl:
 			viewer.close()

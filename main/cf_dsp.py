@@ -50,10 +50,11 @@ class dsp:
 	def gen(self, data):
 		# convert to numeric [-1; 1]
 		wav = N.fromstring(data, N.int16) / self.max
+		reallen = len(wav) / 2
 		return (
 			N.max(N.abs(wav)),
 			N.max(N.abs(self.lpass.filter(wav))),
 			N.max(N.abs(self.mpass.filter(wav))),
 			N.max(N.abs(self.hpass.filter(wav))),
-			N.abs(N.fft.fft(wav))[:len(wav)/2]
+			N.abs(N.fft.fft(wav)[:reallen]) / reallen
 		)

@@ -40,17 +40,14 @@ class scene:
 
 		glViewport(0, 0, self.dim[0], self.dim[1])
 		glMatrixMode(GL_PROJECTION)
-		glLoadIdentity()
 		gluPerspective(45, 1, 1, 1000)
 		glMatrixMode(GL_MODELVIEW)
-		glLoadIdentity()
 
 	def __init__(self, dim = (640, 480)):
 		self.dim = dim
 		self.pygame_init()
 		self.gl_init()
 		self.root = Tk.Tk()
-
 	
 	def close(self):
 		pygame.quit()
@@ -62,16 +59,29 @@ class scene:
 			if event.type == KEYUP and event.key == K_ESCAPE:
 				return
 		pressed = pygame.key.get_pressed()
+		if pressed[K_r]:
+			shape.position = [0]*3
+			shape.rotation = [0]*3
+		if pressed[K_q]:
+			shape.position[1] += 0.1
+		if pressed[K_d]:
+			shape.position[1] -= 0.1
+		if pressed[K_z]:
+			shape.position[0] += 0.1
+		if pressed[K_s]:
+			shape.position[0] -= 0.1
 		if pressed[K_LEFT]:
-			shape.rotation_y += 1
+			shape.rotation[1] += 0.5
 		if pressed[K_RIGHT]:
-			shape.rotation_y -= 1
+			shape.rotation[1] -= 0.5
 		if pressed[K_UP]:
-			shape.rotation_x += 1
+			shape.rotation[0] += 0.5
 		if pressed[K_DOWN]:
-			shape.rotation_x -= 1
+			shape.rotation[0] -= 0.5
 		shape.render()
 
 		if output:
 			pygame.image.save(self.surface, output)
 		self.root.update()
+
+window = scene()

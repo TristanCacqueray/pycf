@@ -63,9 +63,9 @@ class fake_audio_process:
 	def recv(self, mode = None):
 		#time.sleep(0.5)
 		if self.cpt & 1:
-			return (0.9, 0.9, 0.9, 0.9, N.random.random(886) /100.0)
+			return (0.9, 0.9, 0.9, 0.9, N.random.random(886))
 		self.cpt += 1
-		return (0.0, 0.0, 0.0, 0.0, N.random.random(886) /100.0)
+		return (0.0, 0.0, 0.0, 0.0, N.random.random(886))
 
 class audio_process:
 	def __init__(self, fps = 25, input_device_index = None, infile = None, output_device_index = None):

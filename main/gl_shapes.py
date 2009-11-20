@@ -14,81 +14,79 @@
 
 from OpenGL.GL import *
 import numpy as N
+from cf_shapes import shape_param
 
-class gl_shape:
-	name = "nc"
-	params = {}
-	def get(self, amps, fft):
-		x = 0
-		fft /= len(fft)
-		dx1 = 0
-		current = self.data[self.age]
-		while x < self.xlen:
-			if x < 20:
-				dx2 = dx1 + 2
-				ratio = 1.0 + x / 8.0 
-			elif x < 40:
-				dx2 = dx1 + 10
-				ratio = x / 4.0
-			else:
-				ratio = x / 2.0
-				dx2 = dx1 + 64
-			current[x] = N.max(fft[dx1:dx2]) * (ratio)
-			dx1 = dx2
-			x += 1
-		return self
+class wipeout:
+	name = "wipeout"
+	params = {
+		"depth": shape_param(20.0, (1, 200), 1),
+		"width": shape_param(60.0, (1, 443), 1),
+	}
+	def __init__(self):
+		self.age = 0
+		self.datas = N.zeros((2,1000))
+		self.lists = N.zeros(1000, dtype=int)
+		self.zlen = len(self.lists)
+		for i in xrange(self.zlen):
+			self.lists[i] = glGenLists(1)
+		self.rotation = [0., 0., 0.]
+		self.position = [0., 0., 0.]
+
+
 	def render(self):
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 		glLoadIdentity()
-		self.draw()
-
-class wipeout(gl_shape):
-	name = "wipeout"
-	params = {}
-	def __init__(self):
-		self.age = 0
-		self.data = N.zeros((25,50))
-		self.xlen = len(self.data[0])
-		self.zlen = len(self.data)
-		self.xstep = 1 / (self.xlen/2.0)
-		self.zstep = 1 / -5.0
-		self.rotation_y = 0
-		self.rotation_x = 0
-
-
-	def draw(self):
-		glTranslatef(-1., -1., -2.5)
-		glRotatef(self.rotation_y, 0.0, 1.0, 0.0)
-		glRotatef(self.rotation_x, 1.0, 0.0, 0.0)
-		glBegin(GL_QUADS)
+		glTranslatef(self.position[1]-1., -1., self.position[0]  -2.5)
+		glRotatef(self.rotation[0], 1.0, 0.0, 0.0)
+		glRotatef(self.rotation[1], 0.0, 1.0, 0.0)
 		z = 0
-		while z < (self.zlen - 1):
-			zoff = z+self.age
-			a = self.data[(zoff)%(self.zlen)]
-			b = self.data[(zoff+1)%(self.zlen)]
-			z1 = z * self.zstep
-			z2 = z1 + self.zstep
-			x = 0
-			while x < (self.xlen - 1):
-				y1 = a[x]
-				y2 = b[x]
-				y3 = b[x+1]
-				y4 = a[x+1]
-
-				x1 = x * self.xstep 
-				x2 = x1 + self.xstep
-
-				color = (y1+y2+y3+y4)/4.0
-				glColor3f(color, color * x1, 0.1)
-				glVertex3f(x1, y1, z1)
-				glVertex3f(x1, y2, z2)
-				glVertex3f(x2, y3, z2)
-				glVertex3f(x2, y4, z1)
-				x += 1
+		zstep = -1/float(self.params["depth"].value)
+		while z < self.zlen:
+			l = self.lists[(z+self.age)%self.zlen]
+			if l:
+				glCallList(l)
 			z += 1
-		glEnd()
-
+			glTranslatef(0., 0., zstep)
 		self.age = (self.age - 1) % self.zlen
 
+	def get(self, amps, fft):
+		x = 0
+		xlen = self.params["width"].value
+		xstep = 1/(xlen/2.0)
+		ratio = len(fft) / float(xlen)
+		t0 = self.datas[self.age % 2]
+		t1 = self.datas[(self.age + 1) % 2]
+		while x < xlen:
+			y0 = N.max(fft[x*ratio:(x+1)*ratio]) * (1.0 + 10 * (x/float(xlen)))
+			y0 = y0 * 4.0
+			if t1[x] > y0:
+				y0 = t1[x] - (t1[x] - y0) * 0.25
+			t0[x] = y0
+			x += 1
+
+		glNewList(self.lists[self.age], GL_COMPILE)
+		glBegin(GL_QUADS)
+		x = 1
+		zstep = -1/float(self.params["depth"].value)
+		while x < (xlen - 1):
+			y1 = t0[x]
+			y2 = t1[x]
+			y3 = t1[x+1]
+			y4 = t0[x+1]
+
+			x1 = x * xstep
+			x2 = x1 + xstep
+			color = (y1+y2+y3+y4) / 4.0
+			glColor3f(color, color * x1, 0.1)
+			glVertex3f(x1, y1, 0)
+			glVertex3f(x1, y2, zstep)
+			glVertex3f(x2, y3, zstep)
+			glVertex3f(x2, y4, 0)
+			x += 1
+		glEnd()
+		glEndList()
+		return self
+
 shapes = [wipeout()]
+#shapes = []
 
