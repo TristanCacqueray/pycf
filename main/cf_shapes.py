@@ -24,7 +24,6 @@ class shape_param:
 		self.value = value
 		self.range = range
 		self.resolution = resolution
-
 class shape:
 	name = "nc"
 	params = {}

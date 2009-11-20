@@ -25,7 +25,6 @@ from cf_render import cfdg
 from cf_ihm import pngwindow, controler
 from cf_shapes import shapes
 from cf_inputs import *
-from cf_gl import scene
 
 def print_devices_index():
 	import pyaudio
@@ -96,6 +95,10 @@ def main():
 		del sys.argv[idx:idx+5]
 	else:
 		start_amps = (1.0, 1.0, 1.0, 1.0)
+	opengl = check_argv("--opengl")
+	if opengl:
+		import gl_ihm
+		import gl_shapes
 
 	render_video = False
 	output_fmt = get_argv("--render", None, str)
@@ -112,7 +115,6 @@ def main():
 		else:
 			break
 
-	opengl = check_argv("--opengl")
 
 	if len(sys.argv) != 1:
 		raise RuntimeError("Unknown parameters: %s" % sys.argv[1:])
@@ -129,13 +131,15 @@ def main():
 
 	slow_render = False
 	if opengl:
-		render = scene()
+		render = gl_ihm.scene()
 		viewer = render
+		shapes = gl_shapes.shapes
 	else:
 		render = cfdg()
 		viewer = pngwindow()
-		control = controler(viewer, shapes, start_shape, start_amps)
+	control = controler(viewer, shapes, start_shape, start_amps)
 	t0, cpt = time.time(), 0
+	rate = 1/float(fps)
 	try:
 		gl_cpt = 0
 		while True:
@@ -143,52 +147,48 @@ def main():
 			inputs = input.recv(render_video)
 			fft = inputs[4]
 
+			# apply controllers gains
+			gains = control.get_gains()
+			amps = map(lambda x: x*gains[0], inputs[:4])
+			for idx in xrange(1, len(gains)):
+				amps[idx] = amps[idx] * gains[idx]
 
-			if opengl:
-				if output_fmt:
+			shape = control.get_shape()
+
+			# generate shape
+			s = shapes[shape].get(amps, fft)
+
+			of = None
+			if render_video:
+				if opengl:
 					of = output_fmt % gl_cpt
 				else:
-					of = None
-				render.do(fft, of)
-			else:
-				# apply controllers gains
-				gains = control.get_gains()
-				amps = map(lambda x: x*gains[0], inputs[:4])
-				for idx in xrange(1, len(gains)):
-					amps[idx] = amps[idx] * gains[idx]
-
-				shape = control.get_shape()
-
-				# generate shape
-				s = shapes[shape].get(amps, fft)
-
-				if render_video:
 					# save shape for further rendering
 					to_render.append(s)
 
-				if control.dump_shape():
-					print s
+			if control.dump_shape():
+				print s
 
-				# render image
-				render_time = time.time()
-				img = render.do(s)
-				render_time = time.time() - render_time
-				if render_time > 1/float(fps):
-					if not slow_render:
-						print "%f sec to render, %f sec below limit (1/%d)" % (
-							render_time, render_time - 1/float(fps), fps)
-						slow_render = True
+			# render image
+			t1 = time.time()
+			img = render.do(s, of)
+			render_time = time.time() - t1
+			if render_time - rate > 0.01:
+				if not slow_render:
+					print "%f sec to render, %f sec below limit (1/%d)" % (
+						render_time, render_time - rate, fps)
+					slow_render = True
 				else:
 					slow_render = False
 
-				# display image
-				viewer.show(img)
+			# display image
+			viewer.show(img)
 
 			gl_cpt += 1
 			cpt += 1
-			if time.time() - t0 > 10:
+			if t1 - t0 > 10:
 				print "%d Frames generated in 10 seconds" % cpt
-				t0, cpt = time.time(), 0
+				t0, cpt = t1, 0
 	except KeyboardInterrupt:
 		pass
 	except Exception, e:
