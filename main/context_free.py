@@ -23,7 +23,7 @@ import numpy as N
 
 from cf_render import cfdg
 from cf_ihm import pngwindow, controler
-from cf_shapes import shapes
+import cf_shapes
 from cf_inputs import *
 
 def print_devices_index():
@@ -137,6 +137,7 @@ def main():
 	else:
 		render = cfdg()
 		viewer = pngwindow()
+		shapes = cf_shapes.shapes
 	control = controler(viewer, shapes, start_shape, start_amps)
 	t0, cpt = time.time(), 0
 	rate = 1/float(fps)

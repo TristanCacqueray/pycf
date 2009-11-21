@@ -34,8 +34,9 @@ class scene:
 		glClearColor(0.0, 0.0, 0.0, 0.0)
 		glClearDepth(1.0)
 	
-		glEnable(GL_DEPTH_TEST)
 		glDepthFunc(GL_LEQUAL)
+		glEnable(GL_DEPTH_TEST)
+		glShadeModel(GL_SMOOTH)
     		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
 
 		glViewport(0, 0, self.dim[0], self.dim[1])
@@ -43,7 +44,7 @@ class scene:
 		gluPerspective(45, 1, 1, 1000)
 		glMatrixMode(GL_MODELVIEW)
 
-	def __init__(self, dim = (640, 480)):
+	def __init__(self, dim = (800, 600)):
 		self.dim = dim
 		self.pygame_init()
 		self.gl_init()
