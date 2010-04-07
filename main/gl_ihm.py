@@ -20,6 +20,11 @@ import pygame
 import time
 import numpy as N
 
+LightAmb=(0.7,0.7,0.7)
+LightDif=(1.0,1.0,0.0)
+LightPos=(4.0,4.0,6.0,1.0)
+
+
 class scene:
 	def pygame_init(self):
 		pygame.init()
@@ -38,6 +43,18 @@ class scene:
 		glEnable(GL_DEPTH_TEST)
 		glShadeModel(GL_SMOOTH)
     		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
+#		glEnable(GL_LIGHTING)
+#		glEnable(GL_LIGHT0)
+
+#		glLightfv(GL_LIGHT0, GL_POSITION, (.5, .5, .5))
+#	        glLightfv(GL_LIGHT0, GL_DIFFUSE, LightDif)
+#	        glLightfv(GL_LIGHT0, GL_POSITION, LightPos)
+#	        glEnable(GL_LIGHT0)
+#	        glEnable(GL_LIGHTING)
+#		glEnable(GL_COLOR_MATERIAL)
+#		glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
+
+
 
 		glViewport(0, 0, self.dim[0], self.dim[1])
 		glMatrixMode(GL_PROJECTION)
@@ -79,6 +96,9 @@ class scene:
 			shape.rotation[0] += 0.5
 		if pressed[K_DOWN]:
 			shape.rotation[0] -= 0.5
+		if pressed[K_p]:
+			print "rotation:", shape.rotation
+			print "position:", shape.position
 		shape.render()
 
 		if output:

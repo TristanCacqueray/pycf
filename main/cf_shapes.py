@@ -182,7 +182,7 @@ class twofirs(shape):
 				)
 			
 
-import Gnuplot
+#import Gnuplot
 class drops(shape):
 	name = "drops"
 	colors = ( "h 60 b 0.9 sat %f", "h 220 b 0.9 sat %f", "h 28 b 0.9 sat %f" )
@@ -193,7 +193,7 @@ class drops(shape):
 	}
 	limit = 5
 	last_freqs = N.zeros(1024) - limit
-	g = Gnuplot.Gnuplot()
+	#g = Gnuplot.Gnuplot()
 	class drop:
 		def __init__(self, pos, color, size, shape, vec):
 			self.pos, self.color, self.size, self.shape, self.age = pos, color, size, shape, 1
@@ -226,6 +226,7 @@ class drops(shape):
 		#print len(self.fft), N.max(self.fft)
 		freqs = len(self.fft) / self.params["scale"].value
 		limit = self.params["limit"].value
+		self.fft *= 1000.0
 		for i in xrange(int(freqs)):
 			if self.fft[i] > (limit#-i/float(freqs)*0.4
 				):# and self.age - self.last_freqs[i] > self.limit:

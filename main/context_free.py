@@ -26,6 +26,10 @@ from cf_ihm import pngwindow, controler
 import cf_shapes
 from cf_inputs import *
 
+# bug pyaudio want to start jackd without this
+import pygame
+pygame.init()
+
 def print_devices_index():
 	import pyaudio
 	p = pyaudio.PyAudio()
@@ -76,6 +80,15 @@ def check_argv(name):
 
 def main():
 	# dirty getopt
+	if check_argv("--help"):
+		print "usage: %s [--options]\n"%sys.argv[0] + \
+			"--list\tlist audio devices\n" + \
+			"--fps %d\tframe per seconds\n" + \
+			"--shape\tset default starting shape\n" + \
+			"(--input-device %d) || (--wave && --output-device %d) || (--noinput)\taudio processing option\n" + \
+			"--opengl\tswitch to opengl rendering\n" + \
+			"--render path\tsave image and outputs a video !\n"
+		return 
 	if check_argv("--list"):
 		return print_devices_index()
 	in_dev_idx = get_argv("--input-device", None)
@@ -96,6 +109,7 @@ def main():
 	else:
 		start_amps = (1.0, 1.0, 1.0, 1.0)
 	opengl = check_argv("--opengl")
+
 	if opengl:
 		import gl_ihm
 		import gl_shapes
@@ -107,6 +121,11 @@ def main():
 			raise RuntimeError("output_fmt must contain %06d")
 		render_video = True
 		to_render = []
+
+	if opengl:
+		shapes = gl_shapes.shapes
+	else:
+		shapes = cf_shapes.shapes
 
 	while len(sys.argv) > 1:
 		if sys.argv[1] in shapes[start_shape].params.keys():
@@ -133,11 +152,9 @@ def main():
 	if opengl:
 		render = gl_ihm.window
 		viewer = render
-		shapes = gl_shapes.shapes
 	else:
 		render = cfdg()
 		viewer = pngwindow()
-		shapes = cf_shapes.shapes
 	control = controler(viewer, shapes, start_shape, start_amps)
 	t0, cpt = time.time(), 0
 	rate = 1/float(fps)
