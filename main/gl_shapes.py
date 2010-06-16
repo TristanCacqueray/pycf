@@ -119,21 +119,19 @@ class wipeout:
 		"yimp": shape_param(25, (1, 100), 1),
 		"ximp": shape_param(50, (1, 100), 1),
 	}
+	def init_cam(self):
+		# center/eye: camera start eye
+		self.center =  [1.0, 1.4, -0.5]
+		self.eye =  [1.2, 2.6, 4.0]
 	def __init__(self):
-		# rotation/position: camera start position
-		self.rotation = [0., 0., 0.]
-		self.position = [0., 0., 10.]
-		self.rotation = [8.0, -33.5, 0.0]
-#		self.rotation =  [8.0, 1., 0.0]
-		self.position = [-1.8000000000000005, 0.20000000000000004, 0.0]
-#		self.position = [-1.8000000000000005, -0.20000000000000004, 0.0]
+		self.init_cam()
 
 		# age: shape age
 		self.age = 0
 		# datas: fft storage for n and n-1
 		self.datas = N.zeros((2,1000))
 		# lists: fft opengl lists
-		self.lists = N.zeros(150, dtype=int)
+		self.lists = N.zeros(300, dtype=int)
 		# zlen: fft opengl lists len (== shape depth)
 		self.zlen = len(self.lists)
 
@@ -141,17 +139,65 @@ class wipeout:
 		self.shader = compile_program('''
 	// Vertex program
 	varying vec4 pos;
+	varying vec3 normal, lightDir, eyeVec;
 
 	void main() {
+		normal = gl_NormalMatrix * gl_Normal;
+		vec3 vVertex = vec3(gl_ModelViewMatrix * gl_Vertex);
+
+		lightDir = vec3(gl_LightSource[0].position.xyz - vVertex);
+		eyeVec = -vVertex;
 		gl_Position = ftransform();
 		pos = gl_Vertex;
 	}
 	''', '''
 	// Fragment program
 	varying vec4 pos;
+	varying vec3 normal, lightDir, eyeVec;
 
 	void main() {
-		gl_FragColor.rgb = vec3(pos.y, pos.y * pos.x, 0.1);
+		// Fog
+		float perspective_far = 300.0;
+		float fog_cord = (gl_FragCoord.z / gl_FragCoord.w) / perspective_far;
+
+		float fog_density = 2; //0.0005;
+
+		float fog = fog_cord * fog_density;
+		vec4 fog_color = vec4(0., 0., 0., 0.);
+
+		// Fft color
+		float intensity = pos.y / 2.0;
+		vec4 frag_color = vec4(intensity, intensity * pos.x, 0.1, 0.0);
+
+		// Fft + fog
+		gl_FragColor = mix(fog_color, frag_color, clamp(1.0-fog, 0.0, 1.0));
+		return;
+
+		// Lightning color
+		vec4 final_color = ( //gl_FrontLightModelProduct.sceneColor 
+				gl_FragColor * gl_FrontMaterial.ambient) + 
+				(gl_LightSource[0].ambient * gl_FrontMaterial.ambient);
+		vec3 N = normalize(normal);
+		vec3 L = normalize(lightDir);
+	
+		float lambertTerm = dot(N,L);
+	
+		if(lambertTerm > 0.0)
+		{
+			final_color += gl_LightSource[0].diffuse * 
+			               gl_FrontMaterial.diffuse * 
+						   lambertTerm;	
+		
+			vec3 E = normalize(eyeVec);
+			vec3 R = reflect(-L, N);
+			float specular = pow( max(dot(R, E), 0.0), 
+			                 gl_FrontMaterial.shininess );
+			final_color += gl_LightSource[0].specular * 
+			               gl_FrontMaterial.specular * 
+						   specular;	
+		}
+
+		gl_FragColor = final_color;	
 	}
 	''')
 
@@ -177,28 +223,29 @@ class wipeout:
 		# shape border drawing
 		xmax = 1.96
 		glNewList(self.boxs, GL_COMPILE)
+		glUseProgram(0)
 		glBegin(GL_QUADS)
-		glColor3f(0.1, 0.1, 0.1)
-		glVertex3f(0, 0, 0)
+		glColor3f(0.2, 0.2, 0.2)
+		glVertex3f(0, -4, 0)
 		glVertex3f(0, 4, 0)
 		glVertex3f(0, 4, -1000)
-		glVertex3f(0, 0, -1000)
+		glVertex3f(0, -4, -1000)
 
-		glVertex3f(xmax, 0, 0)
+		glVertex3f(xmax, -4, 0)
 		glVertex3f(xmax, 4, 0)
 		glVertex3f(xmax, 4, -1000)
-		glVertex3f(2, 0, -1000)
+		glVertex3f(2, -4, -1000)
 
-		glColor3f(0.2, 0.1, 0.1)
-		glVertex3f(0, 4, 0)
-		glVertex3f(0, 4, -1000)
-		glVertex3f(xmax, 4, -1000)
-		glVertex3f(xmax, 4, 0)
+#		glColor3f(0.2, 0.1, 0.1)
+#		glVertex3f(0, 4, 0)
+#		glVertex3f(0, 4, -1000)
+#		glVertex3f(xmax, 4, -1000)
+#		glVertex3f(xmax, 4, 0)
 
-		glVertex3f(0, 0, 0)
-		glVertex3f(0, 0, -1000)
-		glVertex3f(xmax, 0, -1000)
-		glVertex3f(xmax, 0, 0)
+#		glVertex3f(0, 0, 0)
+#		glVertex3f(0, 0, -1000)
+#		glVertex3f(xmax, 0, -1000)
+#		glVertex3f(xmax, 0, 0)
 		glEnd()
 		glEndList()
 
@@ -212,9 +259,6 @@ class wipeout:
 		self.speed = 20.1 - self.params["speed"].value / 10.0 # speed: ffts interval
 
 		## ----------------------------------- input fft conversion
-		# ratio: old way to scale fft
-#		ratio = len(fft) / float(fscale)
-
 		#t0 : current fft
 		t0 = self.datas[self.age % 2]
 		#t1 : previous fft
@@ -222,9 +266,8 @@ class wipeout:
 
 		# convert input fft to scaled fft in t0
 		for x in xrange(fscale):
-#			y0 = N.max(fft[x*ratio:(x+1)*ratio]) * (1.0 + 10 * (x/float(fscale)))
-			y0 = fft[x] #* (1.0 + 10 * (x/float(fscale)))
-			y0 = y0 * 8.0
+			y0 = fft[x] * 8.0
+			# if previous fft is higher, then we quantize the gap
 			if t1[x] > y0:
 				y0 = t1[x] - (t1[x] - y0) * yimp
 			t0[x] = y0
@@ -245,34 +288,21 @@ class wipeout:
 		glUseProgram(self.shader)
 		glBegin(GL_QUADS)
 
-#		  p2				p1: (x1, y1, 0)
-#                / \                            p2: (x1, y2, 0)
-#	     p1 /   \p3__________               p3: (x2, y3, zstep)
-#		\   /   /   /   /               p4: (x2, y4, zstep)
+#		  p2				p1: (x1, t0[x], 0)
+#                / \                            p2: (x1, t1[x], zstep)
+#	     p1 /   \p3__________               p3: (x2, t1[x+1], zstep)
+#		\   /   /   /   /               p4: (x2, t0[x], 0)
 #		 \ /___/___/___/
 #                 p4
 		for x in xrange(fscale - 2):
-			# quad y coords
-			y1 = t0[x]
-			y2 = t1[x]
-			y3 = t1[x+1]
-			y4 = t0[x+1]
-
 			# quad x coords
 			x1 = x * xstep
 			x2 = x1 + xstep
 
-#			color = (y1+y2+y3+y4) / 4.0
-#			cfront = (y1+y4) / 2.0
-#			cback = (y2+y3) / 2.0
-#			glColor3f(cfront, cfront * x1, 0.1)
-			glVertex3f(x1, y1, 0)
-#			glColor3f(cback, cback * x1, 0.1)
-			glVertex3f(x1, y2, zstep)
-#			glColor3f(cback, cback * x1, 0.1)
-			glVertex3f(x2, y3, zstep)
-#			glColor3f(cfront, cfront * x1, 0.1)
-			glVertex3f(x2, y4, 0)
+			glVertex3f(x1, t0[x], 0)
+			glVertex3f(x1, t1[x], zstep)
+			glVertex3f(x2, t1[x+1], zstep)
+			glVertex3f(x2, t0[x+1], 0)
 		glEnd()
 		glEndList()
 		return self
@@ -290,16 +320,16 @@ class wipeout:
 		glMatrixMode(GL_MODELVIEW)
 		glLoadIdentity();
 
-#		gluLookAt(-10, 10, -50, 0, 0, 10, 0, 1, 0)
-		glTranslatef(self.position[1]-1., -1., self.position[0]  -2.5)
-		glRotatef(self.rotation[0]+18, 1.0, 0.0, 0.0)
-		glRotatef(self.rotation[1]+14, 0.0, 1.0, 0.0)
+		gluLookAt(self.eye[0], self.eye[1], self.eye[2],
+			self.center[0], self.center[1], self.center[2], 
+			0, 1, 0)
+#		glTranslatef(self.eye[1]-1., -1., self.eye[0]  -2.5)
+#		glRotatef(self.center[0]+18, 1.0, 0.0, 0.0)
+#		glRotatef(self.center[1]+14, 0.0, 1.0, 0.0)
 
-		#glLightfv(GL_LIGHT0, GL_POSITION, (1, 3, -2))
-		#glCallList(self.boxs)
-		#glFogi(GL_FOG_COORD_SRC, GL_FRAGMENT_DEPTH);
-		#zstep = -1/((200.2 - self.params["speed"].value)/10.0)
+		glLightfv(GL_LIGHT0, GL_POSITION, (0, 30, -2))
 
+#		glCallList(self.boxs)
 
 		## ----------------------------------- FFTs drawing
 		# zstep: GL z depth between ffts

@@ -20,9 +20,9 @@ import pygame
 import time
 import numpy as N
 
-LightAmb=(0.7,0.7,0.7)
-LightDif=(1.0,1.0,0.0)
-LightPos=(4.0,4.0,6.0,1.0)
+LightAmb=(0.0, 0.0, 0.0, 1.0)
+LightDif=(1.0, 1.0, 1.0, 1.0)
+LightSpec=(1.0, 1.0, 1.0, 1.0)
 
 
 class scene:
@@ -38,16 +38,25 @@ class scene:
 		glEnable(GL_DEPTH_TEST)
 		glShadeModel(GL_SMOOTH)
     		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
-#		glEnable(GL_LIGHTING)
-#		glEnable(GL_LIGHT0)
+		glEnable(GL_LIGHTING)
+		glEnable(GL_LIGHT0)
 
+		glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (0.1, 0.1, 0.1, 1.0))
 #		glLightfv(GL_LIGHT0, GL_POSITION, (.5, .5, .5))
-#	        glLightfv(GL_LIGHT0, GL_DIFFUSE, LightDif)
-#	        glLightfv(GL_LIGHT0, GL_POSITION, LightPos)
+	        glLightfv(GL_LIGHT0, GL_AMBIENT, LightAmb)
+	        glLightfv(GL_LIGHT0, GL_DIFFUSE, LightDif)
+	        glLightfv(GL_LIGHT0, GL_SPECULAR, LightSpec)
 #	        glEnable(GL_LIGHT0)
 #	        glEnable(GL_LIGHTING)
-#		glEnable(GL_COLOR_MATERIAL)
+		glEnable(GL_COLOR_MATERIAL)
 #		glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
+		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (0.3, 0.3, 0.3, 1.0))
+		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0.9, 0.5, 0.5, 1.0))
+
+		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0.6, 0.6, 0.6, 1.0))
+
+		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 60.0 )
+
 
 
 #		glViewport(0, 0, self.dim[0], self.dim[1])
@@ -76,7 +85,7 @@ class scene:
 
 	def update_age(self, lim = 131):
 		if self.age >= lim - 1:
-			self.age += 1
+			self.age += 5
 		else:
 			self.age = lim
 
@@ -88,49 +97,42 @@ class scene:
 			if event.type == KEYUP and event.key == K_ESCAPE:
 				return
 		pressed = pygame.key.get_pressed()
-		if pressed[K_DOWN]:
-			self.travelling_rot = (0, -0.1)
-			self.update_age()
 		if pressed[K_UP]:
-			self.travelling_rot = (0, 0.1)
-			self.update_age()
+			shape.center[1] -= 0.2
+		if pressed[K_DOWN]:
+			shape.center[1] += 0.2
 		if pressed[K_LEFT]:
-			self.travelling_rot = (1, 0.1)
-			self.update_age()
+			shape.eye[0] += 0.2
 		if pressed[K_RIGHT]:
-			self.travelling_rot = (1, -0.1)
-			self.update_age()
+			shape.eye[0] -= 0.2
 		if pressed[K_r]:
-			shape.position = [0]*3
-			shape.rotation = [0]*3
+			shape.init_cam()
 		if pressed[K_q]:
-			self.travelling_pos = (1, 0.01)
-			self.update_age()
+			shape.center[0] -= 0.2
 		if pressed[K_d]:
-			self.travelling_pos = (1, -0.01)
-			self.update_age()
+			shape.center[0] += 0.2
 		if pressed[K_z]:
-			self.travelling_pos = (0, 0.01)
-			self.update_age()
+			shape.eye[1] += 0.2
 		if pressed[K_s]:
-			self.travelling_pos = (0, -0.01)
-			self.update_age()
-		if pressed[K_x]:
-			self.age = 0
+			shape.eye[1] -= 0.2
+		if pressed[K_a]:
+			shape.eye[2] -= 0.2
+		if pressed[K_w]:
+			shape.eye[2] += 0.2
 
 		if self.travelling_rot and self.age > 0:
-			shape.rotation[self.travelling_rot[0]] += self.travelling_rot[1] * (self.age / 131.)
+			shape.center[self.travelling_rot[0]] += self.travelling_rot[1] * (self.age / 131.)
 			if self.age == 1:
 				self.travelling_rot = None
 		if self.travelling_pos and self.age > 0:
-			shape.position[self.travelling_pos[0]] += self.travelling_pos[1] * (self.age / 131.)
+			shape.eye[self.travelling_pos[0]] += self.travelling_pos[1] * (self.age / 131.)
 			if self.age == 1:
 				self.travelling_pos = None
 		self.age -= 1
 
 		if pressed[K_p]:
-			print "self.rotation = ", shape.rotation
-			print "self.position = ", shape.position
+			print "self.center = ", shape.center
+			print "self.eye = ", shape.eye
 
 		# Shape rendering
 		shape.render()
