@@ -16,6 +16,97 @@ from OpenGL.GL import *
 import numpy as N
 from cf_shapes import shape_param
 
+from ctypes import *
+import sys
+ 
+import pygame
+from pygame.locals import *
+ 
+try:
+    # For OpenGL-ctypes
+    from OpenGL import platform
+    gl = platform.OpenGL
+except ImportError:
+    try:
+        # For PyOpenGL
+        gl = cdll.LoadLibrary('libGL.so')
+    except OSError:
+        # Load for Mac
+        from ctypes.util import find_library
+        # finds the absolute path to the framework
+        path = find_library('OpenGL')
+        gl = cdll.LoadLibrary(path)
+ 
+from OpenGL.GL import *
+from OpenGL.GLU import *
+from OpenGL.GLUT import *
+ 
+glCreateShader = gl.glCreateShader
+glShaderSource = gl.glShaderSource
+glShaderSource.argtypes = [c_int, c_int, POINTER(c_char_p), POINTER(c_int)]
+glCompileShader = gl.glCompileShader
+glGetShaderiv = gl.glGetShaderiv
+glGetShaderiv.argtypes = [c_int, c_int, POINTER(c_int)]
+glGetShaderInfoLog = gl.glGetShaderInfoLog
+glGetShaderInfoLog.argtypes = [c_int, c_int, POINTER(c_int), c_char_p]
+glDeleteShader = gl.glDeleteShader
+glCreateProgram = gl.glCreateProgram
+glAttachShader = gl.glAttachShader
+glLinkProgram = gl.glLinkProgram
+glGetError = gl.glGetError
+glUseProgram = gl.glUseProgram
+ 
+GL_FRAGMENT_SHADER = 0x8B30
+GL_VERTEX_SHADER = 0x8B31
+GL_COMPILE_STATUS = 0x8B81
+GL_LINK_STATUS = 0x8B82
+GL_INFO_LOG_LENGTH = 0x8B84
+ 
+def compile_shader(source, shader_type):
+    shader = glCreateShader(shader_type)
+    source = c_char_p(source)
+    length = c_int(-1)
+    glShaderSource(shader, 1, byref(source), byref(length))
+    glCompileShader(shader)
+    
+    status = c_int()
+    glGetShaderiv(shader, GL_COMPILE_STATUS, byref(status))
+    if not status.value:
+        print_log(shader)
+        glDeleteShader(shader)
+        raise ValueError, 'Shader compilation failed'
+    return shader
+ 
+def compile_program(vertex_source, fragment_source):
+    vertex_shader = None
+    fragment_shader = None
+    program = glCreateProgram()
+ 
+    if vertex_source:
+        vertex_shader = compile_shader(vertex_source, GL_VERTEX_SHADER)
+        glAttachShader(program, vertex_shader)
+    if fragment_source:
+        fragment_shader = compile_shader(fragment_source, GL_FRAGMENT_SHADER)
+        glAttachShader(program, fragment_shader)
+ 
+    glLinkProgram(program)
+ 
+    if vertex_shader:
+        glDeleteShader(vertex_shader)
+    if fragment_shader:
+        glDeleteShader(fragment_shader)
+ 
+    return program
+ 
+def print_log(shader):
+    length = c_int()
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, byref(length))
+ 
+    if length.value > 0:
+        log = create_string_buffer(length.value)
+        glGetShaderInfoLog(shader, length, byref(length), log)
+        print >> sys.stderr, log.value
+
 class wipeout:
 	name = "wipeout"
 	params = {
@@ -27,13 +118,36 @@ class wipeout:
 	def __init__(self):
 		self.age = 0
 		self.datas = N.zeros((2,1000))
-		self.lists = N.zeros(1000, dtype=int)
+		self.lists = N.zeros(150, dtype=int)
 		self.zlen = len(self.lists)
 		self.boxs = glGenLists(1)
+		self.shader = compile_program('''
+	// Vertex program
+	varying vec4 pos;
+
+	void main() {
+		gl_Position = ftransform();
+		pos = gl_Vertex;
+	}
+	''', '''
+	// Fragment program
+	varying vec4 pos;
+
+	void main() {
+		gl_FragColor.rgb = vec3(0.8, pos.y, pos.x);
+	}
+	''')
+
 		for i in xrange(self.zlen):
 			self.lists[i] = glGenLists(1)
 		self.rotation = [0., 0., 0.]
-		self.position = [0., 0., 0.]
+		self.position = [0., 0., 10.]
+		self.rotation = [8.0, -33.5, 0.0]
+#		self.rotation =  [8.0, 1., 0.0]
+		self.position = [-1.8000000000000005, 0.20000000000000004, 0.0]
+#		self.position = [-1.8000000000000005, -0.20000000000000004, 0.0]
+
+
 
 		glEnable(GL_COLOR_MATERIAL)
 		glLoadIdentity()
@@ -75,12 +189,23 @@ class wipeout:
 
 
 	def render(self):
+		glFogi(GL_FOG_COORD_SRC, GL_FRAGMENT_DEPTH);
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 		glLoadIdentity()
+
+                glMatrixMode(GL_PROJECTION)
+                glLoadIdentity();
+
+                gluPerspective(45, 1, 1, 1000)
+                glMatrixMode(GL_MODELVIEW)
+                glLoadIdentity();
+
+#		gluLookAt(-10, 10, -50, 0, 0, 10, 0, 1, 0)
 		glTranslatef(self.position[1]-1., -1., self.position[0]  -2.5)
 		glRotatef(self.rotation[0]+18, 1.0, 0.0, 0.0)
 		glRotatef(self.rotation[1]+14, 0.0, 1.0, 0.0)
-#		glLightfv(GL_LIGHT0, GL_POSITION, (1, 3, -2))
+		#glLightfv(GL_LIGHT0, GL_POSITION, (1, 3, -2))
 		#glCallList(self.boxs)
 		z = 0
 		#zstep = -1/((200.2 - self.params["speed"].value)/10.0)
@@ -102,6 +227,7 @@ class wipeout:
 		ratio = len(fft) / float(xlen)
 		t0 = self.datas[self.age % 2]
 		t1 = self.datas[(self.age + 1) % 2]
+		fft = fft * 2
 		x = 0
 		while x < xlen:
 #			y0 = N.max(fft[x*ratio:(x+1)*ratio]) * (1.0 + 10 * (x/float(xlen)))
@@ -121,8 +247,10 @@ class wipeout:
 		xstep = 1/(xlen/2.0)
 		zstep = -1/self.speed
 		glNewList(self.lists[self.age], GL_COMPILE)
+		#glUseProgram(self.shader)
 		glBegin(GL_QUADS)
 		x = 0
+		# draw a frame
 		while x < (xlen - 2):
 			y1 = t0[x]
 			y2 = t1[x]
