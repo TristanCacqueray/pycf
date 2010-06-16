@@ -69,7 +69,7 @@ class fake_audio_process:
 
 class audio_process:
 	def __init__(self, fps = 25, input_device_index = None, infile = None, output_device_index = None):
-		self.q = Queue(4096)
+		self.q = Queue(4096 * 4096)
 		self.rate = 44100 	# hardcoded 44100 Hz sample rate
 		if self.rate / float(fps) != self.rate / fps:
 			raise RuntimeError("Frame per second must be a multiple of %d" % self.rate)
@@ -126,6 +126,7 @@ class audio_process:
 
 			print "Opening Output stream: '%s'" % self.get_device_name(self.output_device_index)
 			self.output_stream = self.open_stream(output = True)
+		#	self.output_stream = None
 		else:
 			print "Opening Input stream: '%s' paInt16 %d Hz stream of %d size" % (
 					self.get_device_name(self.input_device_index),
