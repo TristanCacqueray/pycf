@@ -38,7 +38,7 @@ class scene:
 		glShadeModel(GL_FLAT)
 		glClearColor(0.0, 0.0, 0.0, 0.0)
 		glClearDepth(1.0)
-	
+		
 		glDepthFunc(GL_LEQUAL)
 		glEnable(GL_DEPTH_TEST)
 		glShadeModel(GL_SMOOTH)
@@ -55,21 +55,34 @@ class scene:
 #		glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
 
 
-
-		glViewport(0, 0, self.dim[0], self.dim[1])
+#		glViewport(0, 0, self.dim[0], self.dim[1])
 		glMatrixMode(GL_PROJECTION)
+		glLoadIdentity();
+
 		gluPerspective(45, 1, 1, 1000)
 		glMatrixMode(GL_MODELVIEW)
+		glLoadIdentity();
 
-	def __init__(self, dim = (800, 600)):
+	def __init__(self, dim = (640, 480)):
 		self.dim = dim
 		self.pygame_init()
 		self.gl_init()
 		self.root = Tk.Tk()
+
+		self.travelling_rot = None
+		self.travelling_pos = None
+		self.age = 0
+
 	
 	def close(self):
 		pygame.quit()
 
+	def update_age(self, lim = 131):
+		if self.age >= lim - 1:
+			self.age += 1
+		else:
+			self.age = lim
+		
 	def do(self, shape, output = None):
 	        for event in pygame.event.get():
 			if event.type == QUIT:
@@ -77,28 +90,48 @@ class scene:
 			if event.type == KEYUP and event.key == K_ESCAPE:
 				return
 		pressed = pygame.key.get_pressed()
+		if pressed[K_DOWN]:
+			self.travelling_rot = (0, -0.1)
+			self.update_age()
+		if pressed[K_UP]:
+			self.travelling_rot = (0, 0.1)
+			self.update_age()
+		if pressed[K_LEFT]:
+			self.travelling_rot = (1, 0.1)
+			self.update_age()
+		if pressed[K_RIGHT]:
+			self.travelling_rot = (1, -0.1)
+			self.update_age()
 		if pressed[K_r]:
 			shape.position = [0]*3
 			shape.rotation = [0]*3
 		if pressed[K_q]:
-			shape.position[1] += 0.1
+			self.travelling_pos = (1, 0.01)
+			self.update_age()
 		if pressed[K_d]:
-			shape.position[1] -= 0.1
+			self.travelling_pos = (1, -0.01)
+			self.update_age()
 		if pressed[K_z]:
-			shape.position[0] += 0.1
+			self.travelling_pos = (0, 0.01)
+			self.update_age()
 		if pressed[K_s]:
-			shape.position[0] -= 0.1
-		if pressed[K_LEFT]:
-			shape.rotation[1] += 0.5
-		if pressed[K_RIGHT]:
-			shape.rotation[1] -= 0.5
-		if pressed[K_UP]:
-			shape.rotation[0] += 0.5
-		if pressed[K_DOWN]:
-			shape.rotation[0] -= 0.5
+			self.travelling_pos = (0, -0.01)
+			self.update_age()
+		if pressed[K_x]:
+			self.age = 0
+			
+		if self.travelling_rot and self.age > 0:
+			shape.rotation[self.travelling_rot[0]] += self.travelling_rot[1] * (self.age / 131.)
+			if self.age == 1:
+				self.travelling_rot = None
+		if self.travelling_pos and self.age > 0:
+			shape.position[self.travelling_pos[0]] += self.travelling_pos[1] * (self.age / 131.)
+			if self.age == 1:
+				self.travelling_pos = None
+		self.age -= 1
 		if pressed[K_p]:
-			print "rotation:", shape.rotation
-			print "position:", shape.position
+			print "self.rotation = ", shape.rotation
+			print "self.position = ", shape.position
 		shape.render()
 
 		if output:
