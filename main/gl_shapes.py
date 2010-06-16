@@ -151,7 +151,7 @@ class wipeout:
 	varying vec4 pos;
 
 	void main() {
-		gl_FragColor.rgb = vec3(0.8, pos.y, pos.x);
+		gl_FragColor.rgb = vec3(pos.y, pos.y * pos.x, 0.1);
 	}
 	''')
 
@@ -242,7 +242,7 @@ class wipeout:
 		zstep = -1/self.speed
 
 		glNewList(self.lists[self.age], GL_COMPILE)
-		#glUseProgram(self.shader)
+		glUseProgram(self.shader)
 		glBegin(GL_QUADS)
 
 #		  p2				p1: (x1, y1, 0)
@@ -262,16 +262,16 @@ class wipeout:
 			x1 = x * xstep
 			x2 = x1 + xstep
 
-			color = (y1+y2+y3+y4) / 4.0
-			cfront = (y1+y4) / 2.0
-			cback = (y2+y3) / 2.0
-			glColor3f(cfront, cfront * x1, 0.1)
+#			color = (y1+y2+y3+y4) / 4.0
+#			cfront = (y1+y4) / 2.0
+#			cback = (y2+y3) / 2.0
+#			glColor3f(cfront, cfront * x1, 0.1)
 			glVertex3f(x1, y1, 0)
-			glColor3f(cback, cback * x1, 0.1)
+#			glColor3f(cback, cback * x1, 0.1)
 			glVertex3f(x1, y2, zstep)
-			glColor3f(cback, cback * x1, 0.1)
+#			glColor3f(cback, cback * x1, 0.1)
 			glVertex3f(x2, y3, zstep)
-			glColor3f(cfront, cfront * x1, 0.1)
+#			glColor3f(cfront, cfront * x1, 0.1)
 			glVertex3f(x2, y4, 0)
 		glEnd()
 		glEndList()
