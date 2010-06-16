@@ -154,10 +154,12 @@ class wipeout:
 	// Fragment program
 	varying vec4 pos;
 	varying vec3 normal, lightDir, eyeVec;
+	const float cos_outer_cone_angle = 0.8; // 36 degrees
+
 
 	void main() {
 		// Fog
-		float perspective_far = 300.0;
+		float perspective_far = 1000.0;
 		float fog_cord = (gl_FragCoord.z / gl_FragCoord.w) / perspective_far;
 
 		float fog_density = 2; //0.0005;
@@ -170,34 +172,54 @@ class wipeout:
 		vec4 frag_color = vec4(intensity, intensity * pos.x, 0.1, 0.0);
 
 		// Fft + fog
-		gl_FragColor = mix(fog_color, frag_color, clamp(1.0-fog, 0.0, 1.0));
-		return;
+		//gl_FragColor = mix(fog_color, frag_color, clamp(1.0-fog, 0.0, 1.0));
 
-		// Lightning color
-		vec4 final_color = ( //gl_FrontLightModelProduct.sceneColor 
-				gl_FragColor * gl_FrontMaterial.ambient) + 
-				(gl_LightSource[0].ambient * gl_FrontMaterial.ambient);
-		vec3 N = normalize(normal);
+		// Lightning spot
+		vec4 amb =  frag_color * vec4(0.8, 0.8, 0.8, 1.0);
+		vec4 spec = /* frag_color */ vec4(0.0, 0.0, 0.0, 1.0);
+		vec4 diffuse = frag_color * 1.5; // vec4(0.9, 0.9, 0.9, 1.0);
+		float shininess = 60.0;
+
+		vec4 final_color = (gl_FrontLightModelProduct.sceneColor * amb) + 
+			(gl_LightSource[0].ambient * amb); 
+
 		vec3 L = normalize(lightDir);
 	
-		float lambertTerm = dot(N,L);
-	
+		vec3 D = normalize(gl_LightSource[0].spotDirection);
+
+		float cos_cur_angle = dot(-L, D);
+
+		float cos_inner_cone_angle = gl_LightSource[0].spotCosCutoff;
+
+		float cos_inner_minus_outer_angle = cos_inner_cone_angle - cos_outer_cone_angle;
+
+		float spot = 0.0;
+		spot = clamp((cos_cur_angle - cos_outer_cone_angle) / 
+			cos_inner_minus_outer_angle, 0.0, 1.0);
+
+
+		vec3 N = normalize(normal);
+
+		float lambertTerm = max( dot(N,L), 0.0);
+
 		if(lambertTerm > 0.0)
 		{
 			final_color += gl_LightSource[0].diffuse * 
-			               gl_FrontMaterial.diffuse * 
-						   lambertTerm;	
+				diffuse * 
+				lambertTerm * spot;	
 		
 			vec3 E = normalize(eyeVec);
 			vec3 R = reflect(-L, N);
+			
 			float specular = pow( max(dot(R, E), 0.0), 
-			                 gl_FrontMaterial.shininess );
+			shininess );
+			
 			final_color += gl_LightSource[0].specular * 
-			               gl_FrontMaterial.specular * 
-						   specular;	
+			spec * 
+			specular * spot;	
 		}
 
-		gl_FragColor = final_color;	
+		gl_FragColor = final_color;
 	}
 	''')
 
@@ -223,7 +245,7 @@ class wipeout:
 		# shape border drawing
 		xmax = 1.96
 		glNewList(self.boxs, GL_COMPILE)
-		glUseProgram(0)
+		#glUseProgram(0)
 		glBegin(GL_QUADS)
 		glColor3f(0.2, 0.2, 0.2)
 		glVertex3f(0, -4, 0)
@@ -312,6 +334,12 @@ class wipeout:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 		glLoadIdentity()
 
+		lpos =  [1.0, 4.0, 0.0]
+		ldir =  [0.0, -4.0, -5.0]
+		glLightfv(GL_LIGHT0, GL_POSITION, lpos)
+		glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, ldir)
+		glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 30)
+
 
 		## ----------------------------------- GL cam
 		glMatrixMode(GL_PROJECTION)
@@ -320,16 +348,13 @@ class wipeout:
 		glMatrixMode(GL_MODELVIEW)
 		glLoadIdentity();
 
+
 		gluLookAt(self.eye[0], self.eye[1], self.eye[2],
 			self.center[0], self.center[1], self.center[2], 
 			0, 1, 0)
-#		glTranslatef(self.eye[1]-1., -1., self.eye[0]  -2.5)
-#		glRotatef(self.center[0]+18, 1.0, 0.0, 0.0)
-#		glRotatef(self.center[1]+14, 0.0, 1.0, 0.0)
 
-		glLightfv(GL_LIGHT0, GL_POSITION, (0, 30, -2))
 
-#		glCallList(self.boxs)
+		glCallList(self.boxs)
 
 		## ----------------------------------- FFTs drawing
 		# zstep: GL z depth between ffts

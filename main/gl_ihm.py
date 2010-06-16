@@ -41,21 +41,27 @@ class scene:
 		glEnable(GL_LIGHTING)
 		glEnable(GL_LIGHT0)
 
-		glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (0.1, 0.1, 0.1, 1.0))
+#		glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (0.1, 0.1, 0.1, 1.0))
 #		glLightfv(GL_LIGHT0, GL_POSITION, (.5, .5, .5))
 	        glLightfv(GL_LIGHT0, GL_AMBIENT, LightAmb)
 	        glLightfv(GL_LIGHT0, GL_DIFFUSE, LightDif)
 	        glLightfv(GL_LIGHT0, GL_SPECULAR, LightSpec)
+
+		glLightfv(GL_LIGHT0, GL_SPOT_EXPONENT, 15.0)
+
+		glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1.0)
+		glLightfv(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.0)
+		glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.0)
 #	        glEnable(GL_LIGHT0)
 #	        glEnable(GL_LIGHTING)
-		glEnable(GL_COLOR_MATERIAL)
+#		glEnable(GL_COLOR_MATERIAL)
 #		glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (0.3, 0.3, 0.3, 1.0))
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0.9, 0.5, 0.5, 1.0))
+#		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (0.3, 0.3, 0.3, 1.0))
+#		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0.9, 0.5, 0.5, 1.0))
 
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0.6, 0.6, 0.6, 1.0))
+#		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0.6, 0.6, 0.6, 1.0))
 
-		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 60.0 )
+#		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 60.0 )
 
 
 
