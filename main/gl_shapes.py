@@ -22,20 +22,22 @@ import sys
 import pygame
 from pygame.locals import *
  
+# ------------------------------------------------------------------------
+# PyOpenGL Shader libs
 try:
-    # For OpenGL-ctypes
-    from OpenGL import platform
-    gl = platform.OpenGL
+	# For OpenGL-ctypes
+	from OpenGL import platform
+	gl = platform.OpenGL
 except ImportError:
-    try:
-        # For PyOpenGL
-        gl = cdll.LoadLibrary('libGL.so')
-    except OSError:
-        # Load for Mac
-        from ctypes.util import find_library
-        # finds the absolute path to the framework
-        path = find_library('OpenGL')
-        gl = cdll.LoadLibrary(path)
+	try:
+		# For PyOpenGL
+		gl = cdll.LoadLibrary('libGL.so')
+	except OSError:
+		# Load for Mac
+		from ctypes.util import find_library
+		# finds the absolute path to the framework
+		path = find_library('OpenGL')
+		gl = cdll.LoadLibrary(path)
  
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -63,49 +65,51 @@ GL_LINK_STATUS = 0x8B82
 GL_INFO_LOG_LENGTH = 0x8B84
  
 def compile_shader(source, shader_type):
-    shader = glCreateShader(shader_type)
-    source = c_char_p(source)
-    length = c_int(-1)
-    glShaderSource(shader, 1, byref(source), byref(length))
-    glCompileShader(shader)
-    
-    status = c_int()
-    glGetShaderiv(shader, GL_COMPILE_STATUS, byref(status))
-    if not status.value:
-        print_log(shader)
-        glDeleteShader(shader)
-        raise ValueError, 'Shader compilation failed'
-    return shader
+	shader = glCreateShader(shader_type)
+	source = c_char_p(source)
+	length = c_int(-1)
+	glShaderSource(shader, 1, byref(source), byref(length))
+	glCompileShader(shader)
+	
+	status = c_int()
+	glGetShaderiv(shader, GL_COMPILE_STATUS, byref(status))
+	if not status.value:
+		print_log(shader)
+		glDeleteShader(shader)
+		raise ValueError, 'Shader compilation failed'
+	return shader
  
 def compile_program(vertex_source, fragment_source):
-    vertex_shader = None
-    fragment_shader = None
-    program = glCreateProgram()
+	vertex_shader = None
+	fragment_shader = None
+	program = glCreateProgram()
  
-    if vertex_source:
-        vertex_shader = compile_shader(vertex_source, GL_VERTEX_SHADER)
-        glAttachShader(program, vertex_shader)
-    if fragment_source:
-        fragment_shader = compile_shader(fragment_source, GL_FRAGMENT_SHADER)
-        glAttachShader(program, fragment_shader)
+	if vertex_source:
+		vertex_shader = compile_shader(vertex_source, GL_VERTEX_SHADER)
+		glAttachShader(program, vertex_shader)
+	if fragment_source:
+		fragment_shader = compile_shader(fragment_source, GL_FRAGMENT_SHADER)
+		glAttachShader(program, fragment_shader)
  
-    glLinkProgram(program)
+	glLinkProgram(program)
  
-    if vertex_shader:
-        glDeleteShader(vertex_shader)
-    if fragment_shader:
-        glDeleteShader(fragment_shader)
+	if vertex_shader:
+		glDeleteShader(vertex_shader)
+	if fragment_shader:
+		glDeleteShader(fragment_shader)
  
-    return program
+	return program
  
 def print_log(shader):
-    length = c_int()
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, byref(length))
+	length = c_int()
+	glGetShaderiv(shader, GL_INFO_LOG_LENGTH, byref(length))
  
-    if length.value > 0:
-        log = create_string_buffer(length.value)
-        glGetShaderInfoLog(shader, length, byref(length), log)
-        print >> sys.stderr, log.value
+	if length.value > 0:
+		log = create_string_buffer(length.value)
+		glGetShaderInfoLog(shader, length, byref(length), log)
+		print >> sys.stderr, log.value
+# ------------------------------------------------------------------------
+
 
 class wipeout:
 	name = "wipeout"
@@ -116,11 +120,24 @@ class wipeout:
 		"ximp": shape_param(50, (1, 100), 1),
 	}
 	def __init__(self):
+		# rotation/position: camera start position
+		self.rotation = [0., 0., 0.]
+		self.position = [0., 0., 10.]
+		self.rotation = [8.0, -33.5, 0.0]
+#		self.rotation =  [8.0, 1., 0.0]
+		self.position = [-1.8000000000000005, 0.20000000000000004, 0.0]
+#		self.position = [-1.8000000000000005, -0.20000000000000004, 0.0]
+
+		# age: shape age
 		self.age = 0
+		# datas: fft storage for n and n-1
 		self.datas = N.zeros((2,1000))
+		# lists: fft opengl lists
 		self.lists = N.zeros(150, dtype=int)
+		# zlen: fft opengl lists len (== shape depth)
 		self.zlen = len(self.lists)
-		self.boxs = glGenLists(1)
+
+		# shader: fft pixel shaders (contributed by wakko, thanks)
 		self.shader = compile_program('''
 	// Vertex program
 	varying vec4 pos;
@@ -138,27 +155,26 @@ class wipeout:
 	}
 	''')
 
+		# boxs: shape border opengl list
+		self.boxs = glGenLists(1)
+
+		# Create glLists
 		for i in xrange(self.zlen):
 			self.lists[i] = glGenLists(1)
-		self.rotation = [0., 0., 0.]
-		self.position = [0., 0., 10.]
-		self.rotation = [8.0, -33.5, 0.0]
-#		self.rotation =  [8.0, 1., 0.0]
-		self.position = [-1.8000000000000005, 0.20000000000000004, 0.0]
-#		self.position = [-1.8000000000000005, -0.20000000000000004, 0.0]
 
 
-
+		# Shape OpenGL init
 		glEnable(GL_COLOR_MATERIAL)
 		glLoadIdentity()
-		#glLightfv(GL_LIGHT0, GL_AMBIENT, (0, 0, 0, 0.5))
-	        #glLightfv(GL_LIGHT0, GL_DIFFUSE, (0, 0, 0, 0.5))
-	        #glLightfv(GL_LIGHT0, GL_SPECULAR, (1, 0, 1, 1))
+#		glLightfv(GL_LIGHT0, GL_AMBIENT, (0, 0, 0, 0.5))
+#		glLightfv(GL_LIGHT0, GL_DIFFUSE, (0, 0, 0, 0.5))
+#		glLightfv(GL_LIGHT0, GL_SPECULAR, (1, 0, 1, 1))
 #		glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 2.0)
 #		glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0)
 #		glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.5)
 
-	
+
+		# shape border drawing
 		xmax = 1.96
 		glNewList(self.boxs, GL_COMPILE)
 		glBegin(GL_QUADS)
@@ -183,82 +199,69 @@ class wipeout:
 		glVertex3f(0, 0, -1000)
 		glVertex3f(xmax, 0, -1000)
 		glVertex3f(xmax, 0, 0)
-
 		glEnd()
 		glEndList()
 
 
-	def render(self):
-		glFogi(GL_FOG_COORD_SRC, GL_FRAGMENT_DEPTH);
+	# render an fft step
+	def render_fft(self, amps, fft):
+		# get controller param
+		ximp = self.params["ximp"].value / 100.0 #ximp: create impulsion on X axis
+		yimp = self.params["yimp"].value / 100.0 #yimp: create impulsion on Y axis
+		fscale = self.params["fscale"].value	 #fscale: fft frequence cutoff
+		self.speed = 20.1 - self.params["speed"].value / 10.0 # speed: ffts interval
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-		glLoadIdentity()
+		## ----------------------------------- input fft conversion
+		# ratio: old way to scale fft
+#		ratio = len(fft) / float(fscale)
 
-                glMatrixMode(GL_PROJECTION)
-                glLoadIdentity();
-
-                gluPerspective(45, 1, 1, 1000)
-                glMatrixMode(GL_MODELVIEW)
-                glLoadIdentity();
-
-#		gluLookAt(-10, 10, -50, 0, 0, 10, 0, 1, 0)
-		glTranslatef(self.position[1]-1., -1., self.position[0]  -2.5)
-		glRotatef(self.rotation[0]+18, 1.0, 0.0, 0.0)
-		glRotatef(self.rotation[1]+14, 0.0, 1.0, 0.0)
-		#glLightfv(GL_LIGHT0, GL_POSITION, (1, 3, -2))
-		#glCallList(self.boxs)
-		z = 0
-		#zstep = -1/((200.2 - self.params["speed"].value)/10.0)
-		zstep = -1/self.speed
-		while z < self.zlen:
-			l = self.lists[(z+self.age)%self.zlen]
-			if l:
-				glCallList(l)
-			z += 1
-			glTranslatef(0., 0., zstep)
-		self.age = (self.age - 1) % self.zlen
-
-	def get(self, amps, fft):
-		ximp = self.params["ximp"].value / 100.0
-		yimp = self.params["yimp"].value / 100.0
-		ximp = self.params["ximp"].value / 100.0
-		xlen = self.params["fscale"].value
-		self.speed = 20.1 - self.params["speed"].value / 10.0
-		ratio = len(fft) / float(xlen)
+		#t0 : current fft
 		t0 = self.datas[self.age % 2]
+		#t1 : previous fft
 		t1 = self.datas[(self.age + 1) % 2]
-		fft = fft * 2
-		x = 0
-		while x < xlen:
-#			y0 = N.max(fft[x*ratio:(x+1)*ratio]) * (1.0 + 10 * (x/float(xlen)))
-			y0 = fft[x]# * (1.0 + 10 * (x/float(xlen)))
-			y0 = y0 * 4.0
+
+		# convert input fft to scaled fft in t0
+		for x in xrange(fscale):
+#			y0 = N.max(fft[x*ratio:(x+1)*ratio]) * (1.0 + 10 * (x/float(fscale)))
+			y0 = fft[x] #* (1.0 + 10 * (x/float(fscale)))
+			y0 = y0 * 8.0
 			if t1[x] > y0:
 				y0 = t1[x] - (t1[x] - y0) * yimp
 			t0[x] = y0
-			x += 1
 
-		x = 1
-		while x < xlen:
+		# create X impulsion
+		for x in xrange(1, fscale):
+			# if previous frequency is higher, then we quantize the gap
 			if t0[x] < t0[x-1]:
 				t0[x] = t0[x - 1] - (t0[x-1] - t0[x]) * ximp
-			x += 1
 
-		xstep = 1/(xlen/2.0)
+		## ----------------------------------- fft drawing
+		# xstep: GL x step between freqs
+		xstep = 1/(fscale/2.0)
+		# zstep: GL z depth between ffts
 		zstep = -1/self.speed
+
 		glNewList(self.lists[self.age], GL_COMPILE)
 		#glUseProgram(self.shader)
 		glBegin(GL_QUADS)
-		x = 0
-		# draw a frame
-		while x < (xlen - 2):
+
+#		  p2				p1: (x1, y1, 0)
+#                / \                            p2: (x1, y2, 0)
+#	     p1 /   \p3__________               p3: (x2, y3, zstep)
+#		\   /   /   /   /               p4: (x2, y4, zstep)
+#		 \ /___/___/___/
+#                 p4
+		for x in xrange(fscale - 2):
+			# quad y coords
 			y1 = t0[x]
 			y2 = t1[x]
 			y3 = t1[x+1]
 			y4 = t0[x+1]
 
+			# quad x coords
 			x1 = x * xstep
 			x2 = x1 + xstep
+
 			color = (y1+y2+y3+y4) / 4.0
 			cfront = (y1+y4) / 2.0
 			cback = (y2+y3) / 2.0
@@ -270,11 +273,43 @@ class wipeout:
 			glVertex3f(x2, y3, zstep)
 			glColor3f(cfront, cfront * x1, 0.1)
 			glVertex3f(x2, y4, 0)
-			x += 1
 		glEnd()
 		glEndList()
 		return self
 
-shapes = [wipeout()]
-#shapes = []
+	# render the whole shape
+	def render(self):
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+		glLoadIdentity()
 
+
+		## ----------------------------------- GL cam
+		glMatrixMode(GL_PROJECTION)
+		glLoadIdentity();
+		gluPerspective(45, 1, 1, 1000)
+		glMatrixMode(GL_MODELVIEW)
+		glLoadIdentity();
+
+#		gluLookAt(-10, 10, -50, 0, 0, 10, 0, 1, 0)
+		glTranslatef(self.position[1]-1., -1., self.position[0]  -2.5)
+		glRotatef(self.rotation[0]+18, 1.0, 0.0, 0.0)
+		glRotatef(self.rotation[1]+14, 0.0, 1.0, 0.0)
+
+		#glLightfv(GL_LIGHT0, GL_POSITION, (1, 3, -2))
+		#glCallList(self.boxs)
+		#glFogi(GL_FOG_COORD_SRC, GL_FRAGMENT_DEPTH);
+		#zstep = -1/((200.2 - self.params["speed"].value)/10.0)
+
+
+		## ----------------------------------- FFTs drawing
+		# zstep: GL z depth between ffts
+		zstep = -1/self.speed
+		for z in xrange(self.zlen):
+			l = self.lists[(z+self.age)%self.zlen]
+			if l:
+				glCallList(l)
+			glTranslatef(0., 0., zstep)
+		self.age = (self.age - 1) % self.zlen
+
+shapes = [wipeout()]
+shapes[0].get = shapes[0].render_fft

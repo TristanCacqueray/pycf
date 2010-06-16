@@ -54,7 +54,7 @@ def quick_render(shapes, output_fmt, fps, wave_path):
 	output_base = output_fmt[:output_fmt.index('%06d')]
 	av = ["mencoder", "mf://%s*.png" % output_base, "-mf", "fps=%d:type=png" % fps,
 		"-ovc", "lavc", "-lavcopts", "vcodec=mpeg4:vbitrate=4096",
-		"-oac", "mp3lame", "-audiofile", wave_path,
+		"-oac", "mp3lame", "-audiofile", "%s.wav" % wave_path,
 		"-o", "%s.avi" % output_base]
 	print "Encoding with: %s" % ' '.join(av)
 	if subprocess.Popen(av).wait() != 0:
@@ -211,10 +211,12 @@ def main():
 		pass
 #	except Exception, e:
 #		print "oups:", e
-	if render_video:
-		if not opengl:
-			viewer.close()
-		quick_render(to_render, output_fmt, fps, infile)
+
+	# auto render
+#	if render_video:
+#		if not opengl:
+#			viewer.close()
+#		quick_render(to_render, output_fmt, fps, infile)
 
 	print "exiting"
 

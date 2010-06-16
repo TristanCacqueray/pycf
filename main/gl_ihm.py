@@ -27,12 +27,7 @@ LightPos=(4.0,4.0,6.0,1.0)
 
 class scene:
 	def pygame_init(self):
-		pygame.init()
 		self.surface = pygame.display.set_mode(self.dim, OPENGL|DOUBLEBUF|HWSURFACE)
-	
-	def show(self, img):
-		pygame.display.flip()
-
 
 	def gl_init(self):
 		glShadeModel(GL_FLAT)
@@ -69,8 +64,10 @@ class scene:
 		self.gl_init()
 		self.root = Tk.Tk()
 
+		# travelling_* : tuple (vector index, movement distance)
 		self.travelling_rot = None
 		self.travelling_pos = None
+		# age : travelling age
 		self.age = 0
 
 	
@@ -82,7 +79,8 @@ class scene:
 			self.age += 1
 		else:
 			self.age = lim
-		
+
+	# Handle user input and render the shape
 	def do(self, shape, output = None):
 	        for event in pygame.event.get():
 			if event.type == QUIT:
@@ -119,7 +117,7 @@ class scene:
 			self.update_age()
 		if pressed[K_x]:
 			self.age = 0
-			
+
 		if self.travelling_rot and self.age > 0:
 			shape.rotation[self.travelling_rot[0]] += self.travelling_rot[1] * (self.age / 131.)
 			if self.age == 1:
@@ -129,13 +127,21 @@ class scene:
 			if self.age == 1:
 				self.travelling_pos = None
 		self.age -= 1
+
 		if pressed[K_p]:
 			print "self.rotation = ", shape.rotation
 			print "self.position = ", shape.position
+
+		# Shape rendering
 		shape.render()
 
 		if output:
 			pygame.image.save(self.surface, output)
 		self.root.update()
+
+	# display rendered buffer
+	def show(self, img):
+		pygame.display.flip()
+
 
 window = scene()
