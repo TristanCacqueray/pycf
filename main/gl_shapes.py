@@ -245,7 +245,7 @@ class wipeout:
 		# shape border drawing
 		xmax = 1.96
 		glNewList(self.boxs, GL_COMPILE)
-		#glUseProgram(0)
+		glUseProgram(0)
 		glBegin(GL_QUADS)
 		glColor3f(0.2, 0.2, 0.2)
 		glVertex3f(0, -4, 0)
@@ -354,7 +354,7 @@ class wipeout:
 			0, 1, 0)
 
 
-		glCallList(self.boxs)
+#		glCallList(self.boxs)
 
 		## ----------------------------------- FFTs drawing
 		# zstep: GL z depth between ffts
