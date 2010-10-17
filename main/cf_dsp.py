@@ -64,6 +64,8 @@ class impAmps:
 	""" Convert amps to impulse """
 	def __init__(self):
 		self.amps = N.zeros(4)
+	def __len__(self):
+		return 4
 	def impulse(self, amps, delay = 10.0):
 		for i in xrange(4):
 			if amps[i] >= self.amps[i]:

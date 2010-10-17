@@ -145,6 +145,40 @@ class spirals(shape):
 		self.gen_spirals()
 		self.gen_circles()
 
+class twist(shape):
+	name = "TWISTA"
+	size = 80
+	background = "b -.89"
+	idx = 0
+	def process(self):
+		main_rot = 100 - (self.amps[1] * 100)
+		spi_rot = 10 - (self.amps[2] * 100)
+		if self.idx % 20 == 0:
+			print main_rot, spi_rot
+		self.idx += 1
+		self.shape += ["TWIST {}",
+			"TWISTA  {r %.5f s .9 hue -3 b .15}" % main_rot,
+			"TWISTA {y 23 r -23 s .3 hue 19 b .15}",
+			"TWISTA {y -23 r -23 s .3 hue -13 b .15}",
+			"}"
+			"rule TWIST {",
+			"TWIT {s 5}",
+			"TWIT {s 4.5 r 45}",
+			"}"
+			"rule TWIT {",
+			"BALL {}",
+			"BALL {y 1}",
+			"BALL {y -1}",
+			"BALL {y 2}",
+			"BALL {y -2}",
+			"BALL {y 3}",
+			"BALL {y -3}",
+			"TWIT {r %.5f s .92}" % spi_rot,
+			"}"
+			"rule BALL {",
+			"CIRCLE {s .95 hue 160 saturation .75 b .2}",
+		]
+
 class twofirs(shape):
 	name = "twofirs"
 	params = {
@@ -250,4 +284,4 @@ class drops(shape):
 		
 		self.gen_shapes(self.amps[ALL])
 
-shapes = [twofirs(), spirals(), drops()]
+shapes = [twofirs(), spirals(), drops(), twist()]
