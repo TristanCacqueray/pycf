@@ -13,6 +13,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 import random
+from cf_dsp import impAmps
 from math import *
 import numpy as N
 ALL, LOW, MED, HIGH = range(4)
@@ -144,6 +145,39 @@ class spirals(shape):
 
 		self.gen_spirals()
 		self.gen_circles()
+
+class triburn(shape):
+	name = "triburn"
+	size = 8
+	background_color = "b 0.5 sat 0.5 hue 55"
+	sub_rot = 0
+	mamps = impAmps()
+	dot_hue = 0.0
+	dot_flip = 0
+	def process(self):
+		self.mamps.impulse(self.amps, 10.0)
+		main_rot = 90 - self.mamps[1] * 250.0
+		self.sub_rot += self.amps[3] * 200.0
+		sub_rot2 = -1 * self.sub_rot
+		sub_sz = 1 + min(self.mamps[2] * 10, 2)
+		dot_sz = 0.2 + min(0.8, self.mamps[0])
+		self.dot_hue += self.mamps[3] * 20.0
+		self.dot_flip += self.mamps[2]
+		self.shape += [
+			"SQUARES { b 1.0 sat 1.0 hue 360 x 1 y -2}",
+			"SQUARES2 { b 1.0 sat 1.0 hue 40 x -1 y 2}",
+			"CIRCLE { a -0.5 b 1.0 sat 1.0 f %f hue %d x 3 y -3.1 z 1 s %f}" % (
+					self.dot_flip,(200 + (self.dot_hue%140)), dot_sz),
+		"}",
+		"rule SQUARES2 {",
+			"TRIANGLE {r %f s %f}" % (sub_rot2, sub_sz),
+			"SQUARES2 { y -0.5 s 0.9 r %f hue -1.2 }" % main_rot,
+		"}",
+		"rule SQUARES {",
+			"TRIANGLE {r %f s %f}" % (self.sub_rot, sub_sz),
+			"SQUARES { y 0.5 s 0.9 r %f hue 1.2 }" % main_rot
+		]
+
 
 class twist(shape):
 	name = "TWISTA"
@@ -284,4 +318,4 @@ class drops(shape):
 		
 		self.gen_shapes(self.amps[ALL])
 
-shapes = [twofirs(), spirals(), drops(), twist()]
+shapes = [twofirs(), spirals(), drops(), twist(), triburn()]
