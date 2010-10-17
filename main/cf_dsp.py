@@ -59,3 +59,18 @@ class dsp:
 			N.max(N.abs(self.hpass.filter(wav))),
 			N.abs(N.fft.fft(wav, fftlen)[:reallen], ) / reallen
 		)
+
+class impAmps:
+	""" Convert amps to impulse """
+	def __init__(self):
+		self.amps = N.zeros(4)
+	def impulse(self, amps, delay = 10.0):
+		for i in xrange(4):
+			if amps[i] >= self.amps[i]:
+				self.amps[i] = amps[i]
+			else:
+				delta = (self.amps[i] - amps[i]) / delay
+				self.amps[i] -= delta
+		return self.amps
+	def __getitem__(self, item):
+		return self.amps[item]
